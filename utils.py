@@ -1,3 +1,24 @@
+"""
+Utility code for experiments outlined in “PATHATTACK: Attacking shortest paths
+in complex networks” by Benjamin A. Miller, Zohair Shafi, Wheeler Ruml,
+Yevgeniy Vorobeychik, Tina Eliassi-Rad, and Scott Alfeld at ECML/PKDD 2021.
+
+This material is based upon work supported by the United States Air Force under
+Air  Force  Contract  No.  FA8702-15-D-0001  and  the  Combat  Capabilities  
+Development Command Army Research Laboratory (under Cooperative Agreement Number
+W911NF-13-2-0045).  Any  opinions,  findings,  conclusions  or  recommendations
+expressed in this material are those of the authors and do not necessarily 
+reflect theviews of the United States Air Force or Army Research Laboratory.
+
+Copyright (C) 2021 by 
+Benjamin A. Miller [1], Zohair Shafi [1], Wheeler Ruml [2],
+Yevgeniy Vorobeychik [3],Tina Eliassi-Rad [1], and Scott Alfeld [4]
+
+[1] Northeastern Univeristy
+[2] University of New Hampshire
+[3] Washington University in St. Louis
+[4] Amherst College
+"""
 import numpy as np
 import networkx as nx
 from numpy import random as rand
@@ -123,34 +144,6 @@ def randomized_rounding(G, s, t, E, delta, nPaths, pStar, min_length):
             spl = get_path_length(cutGraph, [shortest_path])[0]
 
     return cutEdges, entropy, numTries
-
-def randomized_rounding_noGraph(P, s, t, E, delta, nPaths, pStar, min_length):
-    uniqueVals = np.unique(delta)
-    entropy = -np.sum(np.nan_to_num(delta*np.log2(delta)))
-    m = len(E)
-    #if list(uniqueVals) == [0, 1]:
-    #    dPrime = delta
-    #    cutEdges = [E[i] for i in np.where(dPrime)[0]]
-    #    assert(entropy==0.0)
-    #else:
-    nSamples = np.ceil(np.log(4*nPaths))
-    sample = np.zeros(delta.shape)
-    numTries = 1
-
-    for ii in range(int(nSamples)):
-        r = rand.rand(m)
-        sample = np.logical_or(sample, [(r[ii] < delta[ii]) for ii in range(m)])
-
-    while np.sum(P@sample < .5) > 0:
-        numTries += 1
-        for ii in range(int(nSamples)):
-             r = rand.rand(m)
-             sample = np.logical_or(sample, [(r[ii] < delta[ii]) for ii in range(m)])
-    
-    cutEdges = [E[i] for i in np.where(sample)[0]]
-
-    return cutEdges, entropy, numTries
-
 
 
 def kronecker_graph(size, density, initiator=None):

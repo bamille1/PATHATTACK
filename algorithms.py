@@ -1,3 +1,24 @@
+"""
+Code for algorithms outlined in “PATHATTACK: Attacking shortest paths
+in complex networks” by Benjamin A. Miller, Zohair Shafi, Wheeler Ruml,
+Yevgeniy Vorobeychik, Tina Eliassi-Rad, and Scott Alfeld at ECML/PKDD 2021.
+
+This material is based upon work supported by the United States Air Force under
+Air  Force  Contract  No.  FA8702-15-D-0001  and  the  Combat  Capabilities  
+Development Command Army Research Laboratory (under Cooperative Agreement Number
+W911NF-13-2-0045).  Any  opinions,  findings,  conclusions  or  recommendations
+expressed in this material are those of the authors and do not necessarily 
+reflect theviews of the United States Air Force or Army Research Laboratory.
+
+Copyright (C) 2021
+Benjamin A. Miller [1], Zohair Shafi [1], Wheeler Ruml [2],
+Yevgeniy Vorobeychik [3],Tina Eliassi-Rad [1], and Scott Alfeld [4]
+
+[1] Northeastern Univeristy
+[2] University of New Hampshire
+[3] Washington University in St. Louis
+[4] Amherst College
+"""
 import networkx as nx
 import numpy as np
 import scipy.sparse as sp
@@ -11,15 +32,29 @@ from gurobipy import GRB
 
 from utils import *
 
+# PATHATTACK_LP: Run the linear-programming-based PATHATTACK algorithm
+#   to identify edges to cut to make p* the shortest path
+# Inputs:   G - an undirected networkx graph with weights and costs on
+#               each edge
+#           s - source vertex of the path
+#           t - destination vertex of the path
+#           pStar - a list of vertices denoting the order of the path
+#           batch_size - the number of shortest paths to add before 
+#               retrying the optimization
+# Outputs:  return_dict - a dictionary containing statistics of the 
+#               of the optimization, including running time and
+#               costs of edges cut
 def PATHATTACK_LP(G, s, t, pStar, batch_size=1):
     
     start_time = time.time()
     ######################set up######################
-    E = list(G.edges())
-    M = len(E)
+    E = list(G.edges()) # list of edges
+    M = len(E)          # number of edges  
     
+    # create a map from edges to indices in E
     eInd = dict()
     for i in range(len(E)):
+        # edges are undirected, so map pairs in both orders
         eInd[E[i]] = i
         eInd[E[i][1], E[i][0]] = i
     
@@ -44,66 +79,83 @@ def PATHATTACK_LP(G, s, t, pStar, batch_size=1):
     ##################################################
     
     
+    zeros = np.zeros((M))       # vector of zeros
+    ones = np.ones((M))         # vector of ones
+    xp_ind = np.nonzero(xp)[0]  # indices of edges in p*
+    max_length = np.dot(w, xp)  # length of p* (maximum length of paths to cut)
     
-    zeros = np.zeros((M))
-    ones = np.ones((M))
-    xp_ind = np.nonzero(xp)[0]
-    max_length = np.dot(w, xp)
-    
+    # create a Gurobi model
     mod = gp.Model('minCut')
+    # delta: indicator vector of edges to cut (continuous variable, apply
+    # randomized rounding
     delta = mod.addMVar(shape=M, vtype=GRB.CONTINUOUS, name="delta")
+
+    # constraints on delta (at most 1, at least 0, don't cut p*)
     mod.addConstr(delta <= ones, "deltaUpper")
     mod.addConstr(delta >= zeros, "deltaLower")
     mod.addConstr(xp@delta == 0)
+    # objective: minimize cost
     mod.setObjective(delta@c, GRB.MINIMIZE)
     
     
-    done = False
-    nConst = 0
+    done = False    # loop until done
+    nConst = 0      # count constraints
     while not done:
+        # perform minimization
         print('Minimize delta')
         mod.optimize()
         deltaHat = delta.X #get current value of delta
         
         
         print('find next constraint')
+        # find new shortest path probably not cut
         Gtemp = G.copy()
         #cut edges where delta=1
         for i in np.where(deltaHat == 1)[0]:
             Gtemp.remove_edge(E[i][0], E[i][1])
+
+        # iterate over paths from s to t
         P = nx.shortest_simple_paths(Gtemp, s, t, weight='weight')
         ctr = 0
-        pConst = []
-        while ctr < batch_size:
+        pConst = [] # list to hold new constraints
+        while ctr < batch_size: # find batch_size new shortest paths
             try:
                 p = next(P)
             except:
-                print('no paths')
+                print('no paths') # break if there are no more such paths
                 break
-            cut = 0
-            length = 0
+            cut = 0     # accumulated cut vector values along path
+            length = 0  # path length
+            # loop over edges on the path
             for i in range(len(p)-1):
-                ind = eInd[(p[i], p[i+1])]
-                cut += deltaHat[ind]
-                length += w[ind]
+                ind = eInd[(p[i], p[i+1])]  # index of the current edge
+                cut += deltaHat[ind]    # add cut vector value at current edge
+                length += w[ind]        # add weight (length) at current edge
             
+            # if the path is too long, don't consider anything further
             if length > max_length:
                 break
-            elif p == pStar:
+            elif p == pStar: # if the path is p*, keep iterating
                 print('we see p*')
                 continue
-            elif cut <= 0.999999: #allowing for some rounding error  #cut < 1:
+            elif cut <= 0.999999: # allowing for some rounding error  #cut < 1:
+                # if the accumulated cut value is not large enough,
+                # add a new constraint
                 pConst.append(p)
                 ctr += 1
             print(p, ': ', cut)
-        if len(pConst) == 0:
+
+        if len(pConst) == 0: # done if no new constraints were added
             done = True
-        else:
-            for p in pConst:
+        else: # otherwise, add the new constraints to the linear program
+            for p in pConst: # for each constraint
+                # get the indicator vector for edges in the path
                 xHat = np.zeros((M))
                 for i in range(len(p)-1):
                     ind = eInd[(p[i], p[i+1])]
                     xHat[ind] = 1
+
+                # add the new constraint to the model
                 nConst += 1
                 mod.addConstr(xHat@delta >= 1, "path constraint "+str(nConst))
     

@@ -1,3 +1,25 @@
+"""
+Script to create input data for experiments outlined in “PATHATTACK: Attacking 
+shortest paths in complex networks” by Benjamin A. Miller, Zohair Shafi, 
+Wheeler Ruml, Yevgeniy Vorobeychik, Tina Eliassi-Rad, and Scott Alfeld at 
+ECML/PKDD 2021.
+
+This material is based upon work supported by the United States Air Force under
+Air  Force  Contract  No.  FA8702-15-D-0001  and  the  Combat  Capabilities  
+Development Command Army Research Laboratory (under Cooperative Agreement Number
+W911NF-13-2-0045).  Any  opinions,  findings,  conclusions  or  recommendations
+expressed in this material are those of the authors and do not necessarily 
+reflect theviews of the United States Air Force or Army Research Laboratory.
+
+Copyright (C) 2021
+Benjamin A. Miller [1], Zohair Shafi [1], Wheeler Ruml [2],
+Yevgeniy Vorobeychik [3],Tina Eliassi-Rad [1], and Scott Alfeld [4]
+
+[1] Northeastern Univeristy
+[2] University of New Hampshire
+[3] Washington University in St. Louis
+[4] Amherst College
+"""
 import networkx as nx
 import random
 import pickle as pkl
@@ -12,15 +34,28 @@ import sys
 
 from algorithms import *
 
+# add_weights: add weights to an unweighted networkx graph via a specified method
+#    Inputs:    G - an unweighted, undirected networkx graph
+#               weights - a string denoting the distribution from which to
+#                   draw weights (Poisson, Uniform, or Equal)
+#   Outputs:    None (G is modified directly)
 def add_weights(G, weights):
+
+    # get one weight for each edge
     nWeights = G.number_of_edges()
+
+    #create a vector of weights
     if weights == 'Poisson':
+        # draw weights from a Poisson distribution
         w = 1+rand.poisson(20, (nWeights))
     elif weights == 'Uniform':
+        # draw weights from a uniform distribution
         w = 1+rand.randint(41, size=(nWeights))
     else:
+        # make all weights equal (1)
         w = np.ones((nWeights))
 
+    # assign each weight to an edge
     ctr = 0
     for e in G.edges:
         G.edges[e]['weight'] = w[ctr]
@@ -32,8 +67,9 @@ if __name__ == "__main__":
     # process inputs
     graphName = sys.argv[1]     # string with the graph name (from the list below)
     weights = sys.argv[2]       # distribution of weights ('Poisson', 'Uniform', or 'Equal')
-    seedPlus = int(sys.argv[3]) # integer from 0 to 10
+    seedPlus = int(sys.argv[3]) # integer (experiments used 0 to 9)
     nTrials = int(sys.argv[4])  # number of trials (random weights and topologies)
+    inputDir = sys.argv[5]      # directory to store input files
 
     # sets seeds for reproducibility
     random.seed(81238.2345+9235.893456*seedPlus)
@@ -108,7 +144,7 @@ if __name__ == "__main__":
 
 
     # file name to save input data
-    filename = 'inputs/'+graphName+'_'+weights+'Weights_part_'+str(seedPlus)+'_'+str(nTrials)+'trials.pkl'
+    filename = inputDir+'/'+graphName+'_'+weights+'Weights_part_'+str(seedPlus)+'_'+str(nTrials)+'trials.pkl'
 
     input_list = []
     if graphName not in ['er', 'ba', 'kron', 'ws']:
