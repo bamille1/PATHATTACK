@@ -41,10 +41,22 @@ from algorithms import *
 #   Outputs:    None (G is modified directly)
 def add_weights(G, weights):
 
+<<<<<<< HEAD
     # get one weight for each edge
     nWeights = G.number_of_edges()
 
     #create a vector of weights
+=======
+    '''
+        Add weights to a graph
+        Input : 
+            G       : nx Graph object - Input graph
+            weights : String - Poisson | Uniform
+    '''
+
+    nWeights = G.number_of_edges()
+    
+>>>>>>> ee82767d5aa5dddf6c742eb449261ff688c38bd9
     if weights == 'Poisson':
         # draw weights from a Poisson distribution
         w = 1+rand.poisson(20, (nWeights))
