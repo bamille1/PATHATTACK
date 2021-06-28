@@ -1,3 +1,24 @@
+"""
+Script to run experiments outlined in “PATHATTACK: Attacking shortest paths
+in complex networks” by Benjamin A. Miller, Zohair Shafi, Wheeler Ruml,
+Yevgeniy Vorobeychik, Tina Eliassi-Rad, and Scott Alfeld at ECML/PKDD 2021.
+
+This material is based upon work supported by the United States Air Force under
+Air  Force  Contract  No.  FA8702-15-D-0001  and  the  Combat  Capabilities  
+Development Command Army Research Laboratory (under Cooperative Agreement Number
+W911NF-13-2-0045).  Any  opinions,  findings,  conclusions  or  recommendations
+expressed in this material are those of the authors and do not necessarily 
+reflect theviews of the United States Air Force or Army Research Laboratory.
+
+Copyright (C) 2021
+Benjamin A. Miller [1], Zohair Shafi [1], Wheeler Ruml [2],
+Yevgeniy Vorobeychik [3],Tina Eliassi-Rad [1], and Scott Alfeld [4]
+
+[1] Northeastern Univeristy
+[2] University of New Hampshire
+[3] Washington University in St. Louis
+[4] Amherst College
+"""
 import networkx as nx
 import random
 import pickle as pkl
@@ -12,6 +33,8 @@ import sys
 
 from algorithms import *
 
+# add_costs: add edge removal costs to a weighted graph
+#
 def add_costs(G, costs):
     for e in G.edges:
         if costs=='weight':
@@ -34,6 +57,8 @@ if __name__ == "__main__":
     nTrials = int(sys.argv[4])
     batch_size = int(sys.argv[5])
     costs = sys.argv[6]
+    inputDir = sys.argv[7]
+    resultDir = sys.argv[8]
 
     if weights not in ['Poisson', 'Uniform', 'Equal']:
         print('invalid weights')
@@ -43,7 +68,7 @@ if __name__ == "__main__":
         print('invalid costs')
         raise
 
-    filename = 'results/'+graphName+'_rank'+str(pathRank)+'_'+weights+'Weights_'\
+    filename = resultDir+'/'+graphName+'_rank'+str(pathRank)+'_'+weights+'Weights_'\
             +costs+'Cost'+'_batch'+str(batch_size)+'_'+str(nTrials)+'trials_noEig.pkl'
 
 
@@ -79,7 +104,7 @@ if __name__ == "__main__":
 
     for ii in range(nTrials):
         if (ii%10) == 0:
-            inputFile = 'inputs/'+graphName+'_'+weights+'Weights_part_'+str(int(np.round(ii/10)))+'_10trials.pkl'
+            inputFile = inputDir+'/'+graphName+'_'+weights+'Weights_part_'+str(int(np.round(ii/10)))+'_10trials.pkl'
             with open(inputFile, 'rb') as f:
                 inputData = pkl.load(f)
         if graphName in ['PARoad', 'LJ']:
@@ -98,10 +123,10 @@ if __name__ == "__main__":
             for e in G.edges:
                 G.edges[e]['cost'] += 0.000000001
         
-        results['LP'].append(force_path_cut_approx(G, s, t, p, batch_size=batch_size))
+        results['LP'].append(PATHATTACK_LP(G, s, t, p, batch_size=batch_size))
         print('done with linear programming based algorithm', flush=True)
         print(results['LP'][-1])
-        results['GreedySC'].append(greedy_batch_cut(G, s, t, p, batch_size=batch_size))
+        results['GreedySC'].append(PATHATTACK_Greedy(G, s, t, p, batch_size=batch_size))
         print('done with greedy set cover based algorithm', flush=True)
         print(results['GreedySC'][-1])
         results['GreedyEdge'].append(naive_edge_cut(G, p, False, True))
