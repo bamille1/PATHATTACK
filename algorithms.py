@@ -262,12 +262,24 @@ def PATHATTACK_Greedy(graph, source, dest, pStar, batch_size=1):
 
 def naive_edge_cut(G, desired_path, return_graph, debug):
 
+    '''
+        Runs a naive algorithm that iteratively cuts the edge with the lowest cost that does not align with the desired path
+        Inputs : 
+            G            : nx Graph object - Input graph
+            desired_path : List - List of nodes that represents the path
+            return_graph : Bool - Return perturbed graph
+            debug        : Bool - Print debug statements
+        
+    ''' 
+
+
     start_time = time.time()
     graph = G.copy()
     source = desired_path[0]
     target = desired_path[-1]
     edges_removed = []
 
+    # Create a dictionary mapping edges to cost 
     costs = {edge : graph.edges[edge]['cost'] for edge in graph.edges}
     total_cost = np.sum(list(costs.values()))
 
@@ -275,41 +287,48 @@ def naive_edge_cut(G, desired_path, return_graph, debug):
     desired_edges = get_edges(desired_path, directed = False)
     desired_path_length = get_path_length(graph, [desired_path])[0]
 
+    # Set up a shortest path iterator 
     path_iterator = nx.shortest_simple_paths(graph, source, target, weight = 'weight')
+    # Get current shortest path
     next_path = next(path_iterator)
-    if next_path == desired_path: #skip over the desired patth
+    # Skip over the desired patth
+    if next_path == desired_path: 
         try:
             next_path = next(path_iterator)
             path_length = get_path_length(graph, [next_path])[0]
         except:
             path_length = np.inf
+    # If not the desired path, get the next one
     else:
         path_length = get_path_length(graph, [next_path])[0]
 
+    # Iterate till conditions are satisfied
     while path_length <= desired_path_length:
 
         # Get edges along desired path directed from source to target
         current_edges = get_edges(next_path, directed = False)
 
-        minCostEdge = None
-        minCost = np.inf
+        min_cost_edge = None
+        min_cost = np.inf
         for edge in current_edges:
-            # Remove the first edge not part of our desired path
+            # Find edge with minimum cost
             if edge not in desired_edges:
-                if graph.edges[edge]['cost'] < minCost:
-                    minCost = graph.edges[edge]['cost']
-                    minCostEdge = edge
+                if graph.edges[edge]['cost'] < min_cost:
+                    min_cost = graph.edges[edge]['cost']
+                    min_cost_edge = edge
 
         if debug :
-            print ("Edge Removed : ", minCostEdge, end = '\r')
+            print ("Edge Removed : ", min_cost_edge, end = '\r')
 
-        graph.remove_edge(*minCostEdge)
-        edges_removed.append(minCostEdge)
+        # Remove edge
+        graph.remove_edge(*min_cost_edge)
+        edges_removed.append(min_cost_edge)
 
         # Reinitialise Path Iterator
         path_iterator = nx.shortest_simple_paths(graph, source, target, weight = 'weight')
         next_path = next(path_iterator)
-        if next_path == desired_path: #
+        # Skip over the desired patth
+        if next_path == desired_path: 
             try:
                 next_path = next(path_iterator)
                 path_length = get_path_length(graph, [next_path])[0]
@@ -318,6 +337,7 @@ def naive_edge_cut(G, desired_path, return_graph, debug):
         else:
             path_length = get_path_length(graph, [next_path])[0]
 
+    # Compute total costs
     cost_removed = 0
     for edge in edges_removed:
         try:
@@ -350,6 +370,18 @@ def naive_edge_cut(G, desired_path, return_graph, debug):
 
 def eigen_score_cut(G, desired_path, directed, return_graph, debug, use_abs = True):
 
+    '''
+    Runs a naive algorithm that iteratively cuts the edge with the highest eigen score that does not align with the desired path
+        Inputs : 
+            G            : nx Graph object - Input graph
+            desired_path : List - List of nodes that represents the path
+            directed     : Bool - Directed or undirected graph
+            return_graph : Bool - Return perturbed graph
+            debug        : Bool - Print debug statements
+            use_abs      : Bool - Flag to determine using abolute values of eigen vectors
+
+    '''
+
     start_time = time.time()
     graph = G.copy()
     if debug :
@@ -368,6 +400,7 @@ def eigen_score_cut(G, desired_path, directed, return_graph, debug, use_abs = Tr
 
     edges_removed = []
 
+    # Create dictionary mapping from edges to cost
     costs = {edge : graph.edges[edge]['cost'] for edge in graph.edges}
     total_cost = np.sum(list(costs.values()))
 
@@ -379,9 +412,12 @@ def eigen_score_cut(G, desired_path, directed, return_graph, debug, use_abs = Tr
         left_vector = np.abs(left_vector)
         right_vector = np.abs(right_vector)
 
+    # Set up a shortest path iterator 
     path_iterator = nx.shortest_simple_paths(graph, source, target, weight = 'weight')
+    # Get current shortest path
     next_path = next(path_iterator)
-    if next_path == desired_path: #
+    # Skip if next path is the desired path
+    if next_path == desired_path: 
         try:
             next_path = next(path_iterator)
             path_length = get_path_length(graph, [next_path])[0]
@@ -398,24 +434,28 @@ def eigen_score_cut(G, desired_path, directed, return_graph, debug, use_abs = Tr
     if debug :
         print ("SVD Complete, Removing Edges")
 
-    while path_length <= desired_path_length:     # next_path != desired_path:
+    # Iterate 
+    while path_length <= desired_path_length:     
 
         # Consider path to be directed from source to target
         current_edges = get_edges(next_path, directed = False)
         allowed_edges = list(set(current_edges).difference(set(desired_edges)))
 
+        # Compute eigen scores for each edge scaled by cost of the edge
         eigen_score = {}
         for edge in current_edges:
 
             eigen_score[edge] = left_vector[edge[0]] * right_vector[edge[1]] / graph.edges[edge]['cost']
 
+        # Add reversed edges in case graph is undirected
         if not directed :
             allowed_edges = allowed_edges + [(x[1], x[0]) for x in allowed_edges]
 
+        # Create dictionary mapping edges to eigen scores
         current_eigen_score = {edge : score for edge, score in eigen_score.items() if edge in allowed_edges}
         current_eigen_score = sort_dict(current_eigen_score, reverse = True)
 
-
+        # Remove the top edge
         graph.remove_edge(*current_eigen_score[0][0])
         edges_removed.append(current_eigen_score[0][0])
         if debug :

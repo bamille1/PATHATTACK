@@ -8,9 +8,21 @@ import subprocess
 
 def get_path_length(graph, path_list, directed = False):
 
+    '''
+        Returns lengths of a list of paths
+
+        Inputs : 
+            graph     : nx Graph object - Input graph
+            path_list : List - List of paths 
+            directed  : Bool - Directed / Undirected
+    '''
+
     length_list = []
+
+    # Iterate over all paths
     for path in path_list:
         length = 0
+        # Add weights of each edge along the path 
         for edge in get_edges(path, directed):
             length = length + graph.edges[edge]['weight']
         length_list.append(length)
@@ -20,11 +32,25 @@ def get_path_length(graph, path_list, directed = False):
 
 def get_shortest_paths(graph, source, target,  num_paths = None, desired_path = None):
     
+    '''
+
+        Gets shortest simple paths upto a fixed number of paths or till a particular path is reached. 
+        Uses networkx's nx.shortest_simple_paths
+
+        Inputs : 
+            graph : nx Graph object - Input graph
+            source : Integer - Source node 
+            target : Integer - Target node
+            num_paths : Integer - Number of paths to iterate (optional)
+            desired_path : List - The desired path to iterate till (optional)
+    '''
+
     paths = []
     X = nx.shortest_simple_paths(graph, source, target, weight = 'weight')
     k = num_paths
     
     if desired_path == None: 
+        # Iterate over num_paths
         for counter, path in enumerate(X):
             paths.append(path)
             if counter == k - 1:
@@ -33,6 +59,7 @@ def get_shortest_paths(graph, source, target,  num_paths = None, desired_path = 
         return paths
     
     else: 
+        # Keep iterating till desired_path is found
         for counter, path in enumerate(X):
             paths.append(path)
             if path == desired_path:
@@ -42,6 +69,14 @@ def get_shortest_paths(graph, source, target,  num_paths = None, desired_path = 
 
 
 def get_edges(path, directed = False):
+
+    '''
+        Returns a list of edges from a path 
+        
+        Inputs : 
+            path     : List - List of nodes forming a path 
+            directed : Bool - Directed / undirected
+    '''
 
     edge_list = []
     for i in range(len(path)):
@@ -58,6 +93,14 @@ def get_edges(path, directed = False):
     return edge_list
 
 def sort_dict(in_dict, reverse = False):
+
+    '''
+        Returns a dictionary sorted by keys 
+        Inputs : 
+            in_dict : dict - Dictionary to sort
+            reverse : Bool - Ascending / Descending
+    '''
+
     return sorted(in_dict.items(), key = lambda kv : kv[1], reverse = reverse)
 
 def randomized_rounding(G, s, t, E, delta, nPaths, pStar, min_length):
@@ -154,7 +197,10 @@ def randomized_rounding_noGraph(P, s, t, E, delta, nPaths, pStar, min_length):
 
 
 def kronecker_graph(size, density, initiator=None):
-    """Generate a stochastic Kronecker graph using SNAP."""
+    '''
+        Generate a stochastic Kronecker graph using SNAP.
+    '''
+
     command = './Snap-6.0-Ubuntu18.04/krongen'
     tmp = tempfile.NamedTemporaryFile()
     output_flag = '-o:{}'.format(tmp.name)
@@ -178,19 +224,22 @@ def kronecker_graph(size, density, initiator=None):
 
 
 def initiator_matrix(size, density):
-    """Return an initiator matrix for the stochastic Kronecker model.
+    
+    '''
+        Return an initiator matrix for the stochastic Kronecker model.
 
-    The stochastic Kronecker random graph needs an initiator matrix. This
-    function returns a 2x2 initiator matrix from which the stochastic
-    Kronecker model will generate a network with expected number of nodes
-    and edges equal to size and density, respectively.
+        The stochastic Kronecker random graph needs an initiator matrix. This
+        function returns a 2x2 initiator matrix from which the stochastic
+        Kronecker model will generate a network with expected number of nodes
+        and edges equal to size and density, respectively.
 
-    With an initiator matrix [a, b; b, c], the expected number of nodes and
-    edges is 2**k, and (a+2b+c)**k, respectively, where k is the number of
-    iterations of the Kronecker product. This allows us to draw a, b, and c
-    randomly in such a way that fixes the expected density.
+        With an initiator matrix [a, b; b, c], the expected number of nodes and
+        edges is 2**k, and (a+2b+c)**k, respectively, where k is the number of
+        iterations of the Kronecker product. This allows us to draw a, b, and c
+        randomly in such a way that fixes the expected density.
 
-    """
+    '''
+
     iters = int(round(np.log2(size)))
     # We have to make sure that the resulting initiator matrix generates a
     # densification power law.  Thus, we draw a, and c randomly until the

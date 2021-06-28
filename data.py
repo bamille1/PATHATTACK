@@ -13,7 +13,16 @@ import sys
 from algorithms import *
 
 def add_weights(G, weights):
+
+    '''
+        Add weights to a graph
+        Input : 
+            G       : nx Graph object - Input graph
+            weights : String - Poisson | Uniform
+    '''
+
     nWeights = G.number_of_edges()
+    
     if weights == 'Poisson':
         w = 1+rand.poisson(20, (nWeights))
     elif weights == 'Uniform':
